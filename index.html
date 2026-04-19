@@ -664,7 +664,7 @@ function openIDB(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB_NAM
 function idbGet(key){return openIDB().then(db=>new Promise((res,rej)=>{const t=db.transaction(IDB_STORE,'readonly').objectStore(IDB_STORE).get(key);t.onsuccess=()=>res(t.result);t.onerror=rej}))}
 function idbSet(key,val){return openIDB().then(db=>new Promise((res,rej)=>{const t=db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).put(val,key);t.onsuccess=()=>res(true);t.onerror=rej}))}
 function idbDel(key){return openIDB().then(db=>new Promise((res,rej)=>{const t=db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).delete(key);t.onsuccess=()=>res(true);t.onerror=rej}))}
-function idbAll(){return openIDB().then(db=>new Promise((res,rej)=>{const t=db.transaction(IDB_STORE,'readonly').objectStore(IDB_STORE).getAll();const k=db.transaction(IDB_STORE,'readonly').objectStore(IDB_STORE).getAllKeys();let vals,keys;t.onsuccess=()=>{vals=t.result};k.onsuccess=()=>{keys=k.result;const obj={};keys.forEach((key,i)=>obj[key]=vals[i]);res(obj)};t.onerror=rej;k.onerror=rej}))}
+function idbAll(){return openIDB().then(db=>new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readonly');const store=tx.objectStore(IDB_STORE);const tReq=store.getAll();const kReq=store.getAllKeys();let vals,keys;tReq.onsuccess=()=>{vals=tReq.result;if(keys){const obj={};keys.forEach((key,i)=>obj[key]=vals[i]);res(obj)}};kReq.onsuccess=()=>{keys=kReq.result;if(vals){const obj={};keys.forEach((key,i)=>obj[key]=vals[i]);res(obj)}};tx.onerror=()=>rej(tx.error)}))}
 
 // ── Image compression helper ──
 function compressImage(dataUrl,maxW,quality){
@@ -787,8 +787,9 @@ const sec=document.getElementById('lib-section');const grid=document.getElementB
 if(keys.length===0){sec.style.display='none';return}
 sec.style.display='block';grid.innerHTML='';
 keys.forEach(id=>{const p=projects[id];
+if(!p||!p.name)return; // skip corrupted entries
 const d=document.createElement('div');d.className='lib-card';
-const dateStr=new Date(p.date).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+const dateStr=p.date?new Date(p.date).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}):'Unknown date';
 d.innerHTML=`<div class="lc-preview"><div style="font-size:2.5rem;color:var(--muted)">📖</div></div>
 <div class="lc-info"><h4>${p.name}</h4><span>${p.pageCount||'?'} pages · ${dateStr}</span></div>
 <div class="lc-actions"><button onclick="event.stopPropagation();loadProject('${id}')">✏️ Edit</button><button class="del" onclick="event.stopPropagation();deleteProject('${id}')">🗑 Delete</button></div>`;

@@ -1550,22 +1550,24 @@ prog.style.display='block';prog.textContent='Compressing images for web...';
 try{
 saveCurrent();
 // Aggressively compress images for online hosting
-const pubPages=[];
-for(const p of pages){
-const blocks=[];
+const pubPages=[];let strippedMedia=[];
+for(let pi=0;pi<pages.length;pi++){
+const p=pages[pi];const blocks=[];
 for(const b of p.blocks){
 const c=JSON.parse(JSON.stringify(b));delete c.id;
 if(c.src&&c.src.startsWith('data:image')){
 prog.textContent='Compressing images...';
 c.src=await compressImage(c.src,800,0.5);
 }
-// Strip very large video/audio to keep payload small
-if(c.src&&c.src.startsWith('data:video'))c.src='[video-removed-for-web]';
-if(c.src&&c.src.startsWith('data:audio'))c.src='[audio-removed-for-web]';
+// Strip uploaded video/audio (base64 data too large for KV storage)
+// YouTube/Vimeo embeds (embedUrl) are kept as-is since they're just URLs
+if(c.src&&c.src.startsWith('data:video')){c.src='[video-removed-for-web]';strippedMedia.push('Page '+(pi+1)+': uploaded video'+(c.caption?' "'+c.caption+'"':''))}
+if(c.src&&c.src.startsWith('data:audio')){c.src='[audio-removed-for-web]';strippedMedia.push('Page '+(pi+1)+': uploaded audio'+(c.label?' "'+c.label+'"':''))}
 blocks.push(c);
 }
 pubPages.push({blocks,bg:p.bg,audio:null});
 }
+if(strippedMedia.length>0){prog.textContent='Note: '+strippedMedia.length+' uploaded media file(s) excluded (use YouTube/Vimeo URLs for online videos). Publishing...';await new Promise(r=>setTimeout(r,2500))}
 
 prog.textContent='Uploading to server...';
 const payload={name,pages:pubPages,hfSettings:JSON.parse(JSON.stringify(hfSettings))};

@@ -528,7 +528,36 @@ input,select,textarea{font-family:inherit}
 
 <div class="modal-ov" id="export-modal"><div class="modal" style="text-align:center"><h2>Publish Interactive Ebook</h2><p class="msub">Export as a standalone interactive HTML flipbook</p><div style="margin:20px 0"><div class="tpl-card" onclick="exportHTML()" style="max-width:280px;margin:0 auto;cursor:pointer"><div class="tp" style="display:flex;align-items:center;justify-content:center;font-size:2.5rem;background:var(--surface2)">🌐</div><div class="ti"><h4>Export Interactive Flipbook</h4><span>Self-contained HTML file</span></div></div></div><button class="m-cancel" onclick="closeM('export-modal')">Close</button></div></div>
 
-<div class="modal-ov" id="share-modal"><div class="modal" style="text-align:center"><h2>Share Flipbook</h2><p class="msub">Enter URL where your flipbook is hosted</p><div style="display:flex;gap:6px;margin-bottom:12px"><input type="url" class="pc-input" id="qr-url" placeholder="https://trainings.com/library/..."><button class="m-ok" onclick="genQR()" style="flex:none">Generate</button></div><div id="qr-box" style="display:none;background:#fff;padding:14px;border-radius:10px;display:inline-block;margin:10px 0"></div><div id="qr-acts" style="display:none;margin-bottom:10px"><button class="sb-btn" onclick="dlQR()" style="display:inline-block;width:auto;padding:6px 14px;margin:0 3px">Download PNG</button><button class="sb-btn" onclick="copyURL()" style="display:inline-block;width:auto;padding:6px 14px;margin:0 3px">Copy URL</button></div><button class="m-cancel" onclick="closeM('share-modal')">Close</button></div></div>
+<div class="modal-ov" id="share-modal"><div class="modal" style="text-align:center;max-width:520px">
+<h2>Share Ebook Online</h2>
+<p class="msub">Publish your ebook to get a shareable link and QR code</p>
+
+<!-- Publish Online Section -->
+<div style="border:1px solid var(--border);border-radius:10px;padding:16px;margin:14px 0;background:var(--surface2);text-align:left">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:1.2rem">&#127760;</span><strong style="font-size:.9rem">Publish Online</strong></div>
+<p style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Your ebook will be hosted and accessible to anyone with the link. Images will be compressed for fast loading.</p>
+<div class="fr" style="margin-bottom:8px"><label style="font-size:.75rem">Ebook Title</label><input type="text" class="pc-input" id="pub-name" placeholder="My Awesome Ebook"></div>
+<button class="m-ok" onclick="publishOnline()" id="pub-btn" style="width:100%;padding:10px;font-size:.88rem">&#128640; Publish Online</button>
+<div id="pub-progress" style="display:none;margin-top:10px;padding:10px;background:var(--surface);border-radius:6px;font-size:.8rem;color:var(--muted);text-align:center"></div>
+</div>
+
+<!-- Result Section (hidden until published) -->
+<div id="pub-result" style="display:none;border:1px solid var(--accent);border-radius:10px;padding:16px;margin-bottom:14px;background:rgba(108,92,231,.08)">
+<p style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Your ebook is live! Share this link:</p>
+<div style="display:flex;gap:6px;margin-bottom:10px"><input type="url" class="pc-input" id="pub-url" readonly style="font-size:.82rem;background:var(--surface);cursor:text"><button class="m-ok" onclick="copyPubURL()" style="flex:none;padding:6px 14px">Copy</button></div>
+<div id="qr-box" style="background:#fff;padding:14px;border-radius:10px;display:inline-block;margin:6px 0"></div>
+<div style="margin-top:8px"><button class="sb-btn" onclick="dlQR()" style="display:inline-block;width:auto;padding:6px 14px;margin:0 3px">Download QR</button><button class="sb-btn" onclick="copyPubURL()" style="display:inline-block;width:auto;padding:6px 14px;margin:0 3px">Copy Link</button></div>
+</div>
+
+<!-- Manual URL Section (collapsible) -->
+<details style="text-align:left;margin-bottom:10px">
+<summary style="cursor:pointer;font-size:.78rem;color:var(--muted);padding:6px 0">Or generate QR for a custom URL...</summary>
+<div style="display:flex;gap:6px;margin-top:8px"><input type="url" class="pc-input" id="qr-url" placeholder="https://example.com/my-ebook"><button class="m-ok" onclick="genQR()" style="flex:none">Generate</button></div>
+<div id="qr-box-manual" style="display:none;background:#fff;padding:14px;border-radius:10px;display:inline-block;margin:10px 0"></div>
+</details>
+
+<button class="m-cancel" onclick="closeM('share-modal')">Close</button>
+</div></div>
 
 <div class="modal-ov" id="user-modal"><div class="modal" style="max-width:480px"><h2>User Management</h2><p class="msub">Manage admin accounts</p>
 <div id="user-list" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;max-height:250px;overflow-y:auto"></div>
@@ -1503,8 +1532,85 @@ toast('Flipbook exported!');hideLoad()},100);
 // ════════════════════════════════════
 //  QR / SHARE
 // ════════════════════════════════════
-function showShareModal(){document.getElementById('share-modal').classList.add('show')}
-function genQR(){const url=document.getElementById('qr-url').value.trim();if(!url){toast('Enter a URL');return}const box=document.getElementById('qr-box');box.innerHTML='';box.style.display='inline-block';document.getElementById('qr-acts').style.display='block';new QRCode(box,{text:url,width:200,height:200,colorDark:'#1a1a2e',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.H})}
+function showShareModal(){
+document.getElementById('share-modal').classList.add('show');
+// Pre-fill title from current project
+const idx=getProjectIndex();
+const name=currentProjectId&&idx[currentProjectId]?idx[currentProjectId].name:'My Ebook';
+document.getElementById('pub-name').value=name;
+}
+
+async function publishOnline(){
+const name=document.getElementById('pub-name').value.trim()||'My Ebook';
+const btn=document.getElementById('pub-btn');
+const prog=document.getElementById('pub-progress');
+btn.disabled=true;btn.textContent='Publishing...';
+prog.style.display='block';prog.textContent='Compressing images for web...';
+
+try{
+saveCurrent();
+// Aggressively compress images for online hosting
+const pubPages=[];
+for(const p of pages){
+const blocks=[];
+for(const b of p.blocks){
+const c=JSON.parse(JSON.stringify(b));delete c.id;
+if(c.src&&c.src.startsWith('data:image')){
+prog.textContent='Compressing images...';
+c.src=await compressImage(c.src,800,0.5);
+}
+// Strip very large video/audio to keep payload small
+if(c.src&&c.src.startsWith('data:video'))c.src='[video-removed-for-web]';
+if(c.src&&c.src.startsWith('data:audio'))c.src='[audio-removed-for-web]';
+blocks.push(c);
+}
+pubPages.push({blocks,bg:p.bg,audio:null});
+}
+
+prog.textContent='Uploading to server...';
+const payload={name,pages:pubPages,hfSettings:JSON.parse(JSON.stringify(hfSettings))};
+
+const resp=await fetch('/api/publish',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify(payload)
+});
+
+if(!resp.ok){
+const err=await resp.json().catch(()=>({}));
+throw new Error(err.error||'Server error '+resp.status);
+}
+
+const result=await resp.json();
+prog.style.display='none';
+
+// Show result
+document.getElementById('pub-result').style.display='block';
+document.getElementById('pub-url').value=result.viewUrl;
+
+// Generate QR code
+const box=document.getElementById('qr-box');box.innerHTML='';box.style.display='inline-block';
+new QRCode(box,{text:result.viewUrl,width:220,height:220,colorDark:'#1a1a2e',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.H});
+
+btn.textContent='\u2705 Published! Publish Again';btn.disabled=false;
+toast('Ebook published online!');
+
+}catch(e){
+console.error('Publish error:',e);
+prog.textContent='Error: '+e.message;prog.style.color='#e94560';
+btn.textContent='\uD83D\uDE80 Publish Online';btn.disabled=false;
+}
+}
+
+function copyPubURL(){
+const u=document.getElementById('pub-url').value;
+if(u)navigator.clipboard.writeText(u).then(()=>toast('Link copied!')).catch(()=>{
+// Fallback for older browsers
+const inp=document.getElementById('pub-url');inp.select();document.execCommand('copy');toast('Link copied!');
+});
+}
+
+function genQR(){const url=document.getElementById('qr-url').value.trim();if(!url){toast('Enter a URL');return}const box=document.getElementById('qr-box-manual');box.innerHTML='';box.style.display='inline-block';new QRCode(box,{text:url,width:200,height:200,colorDark:'#1a1a2e',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.H})}
 function dlQR(){const c=document.querySelector('#qr-box canvas');if(!c)return;const a=document.createElement('a');a.download='ebook-qr.png';a.href=c.toDataURL('image/png');a.click()}
 function copyURL(){const u=document.getElementById('qr-url').value.trim();if(u)navigator.clipboard.writeText(u).then(()=>toast('URL copied!'))}
 

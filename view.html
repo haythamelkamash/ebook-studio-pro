@@ -128,7 +128,7 @@ if(!ebookId){
 
 async function loadEbook(id){
   try{
-    const resp=await fetch('/api/ebook/'+encodeURIComponent(id));
+    const resp=await fetch('/api/ebook?id='+encodeURIComponent(id));
     if(!resp.ok){
       const err=await resp.json().catch(()=>({}));
       showError('Ebook Not Found',err.error||'This ebook could not be found. It may have been removed.');
